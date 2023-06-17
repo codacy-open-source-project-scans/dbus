@@ -20,7 +20,7 @@
 
 project('dbus',
     'c',
-    version: '1.15.5',
+    version: '1.15.6',
     meson_version: '>=0.56',
 )
 
@@ -63,14 +63,14 @@ config.set_quoted('DBUS_DAEMON_NAME', 'dbus-daemon')
 # http://sources.redhat.com/autobook/autobook/autobook_91.html#SEC91
 
 ## increment if the interface has additions, changes, removals.
-lt_current = 39
+lt_current = 40
 ## increment any time the source changes;
 ## set to 0 if you increment CURRENT
 lt_revision = 0
 ## increment if any interfaces have been added;
 ## set to 0 if any interfaces have been changed or removed.
 ## removal has precedence over adding, so set to 0 if both happened.
-lt_age = 36
+lt_age = 37
 
 soversion = (lt_current - lt_age)
 version_info = '@0@.@1@.@2@'.format(soversion, lt_age, lt_revision)
@@ -791,12 +791,9 @@ endif
 
 if not asserts
     warning_args += [
-        '-Wno-unused-but-set-variable',
-        '-Wno-unused-variable',
         '-Wno-unused-function',
     ]
 endif
-
 
 checks = get_option('checks')
 config.set('DBUS_ENABLE_CHECKS', checks ? 1 : false)
@@ -806,6 +803,19 @@ config.set('HAVE_GIO_UNIX', have_gio_unix ? 1 : false)
 # Ignore post-2.38 deprecations, prevent use of post-2.44 APIs.
 config.set('GLIB_VERSION_MIN_REQUIRED', 'GLIB_VERSION_2_38')
 config.set('GLIB_VERSION_MAX_ALLOWED', 'G_ENCODE_VERSION(2,44)')
+
+if not checks
+    warning_args += [
+        '-Wno-unused-label',
+    ]
+endif
+
+if not (asserts and checks)
+    warning_args += [
+        '-Wno-unused-but-set-variable',
+        '-Wno-unused-variable',
+    ]
+endif
 
 windows_output_debug = get_option('windows_output_debug_string')
 config.set('DBUS_USE_OUTPUT_DEBUG_STRING', windows_output_debug)

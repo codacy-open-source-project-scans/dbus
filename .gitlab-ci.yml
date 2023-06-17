@@ -45,6 +45,8 @@ variables:
   ci_local_packages: "yes"
   ci_parallel: "2"
   ci_sudo: "yes"
+  # Temporarily needed to clean up after dbus/dbus#447
+  GIT_STRATEGY: clone
 
   ###
   # IMPORTANT
@@ -260,7 +262,6 @@ debian mingw64 meson debug:
   extends:
     - .meson-common
     - .debian-build
-  when: manual
   variables:
     ci_host: "x86_64-w64-mingw32"
     ci_variant: "debug"
@@ -308,8 +309,6 @@ opensuse mingw64 cmake debug:
     ci_host: "x86_64-w64-mingw32"
     ci_local_packages: "no"
     ci_variant: "debug"
-  # Currently broken, https://gitlab.freedesktop.org/dbus/dbus/-/issues/455
-  when: manual
 
 opensuse mingw64 meson debug:
   extends:
@@ -398,6 +397,8 @@ windows-meson-mingw-ucrt64:
     paths:
       - "build/config.h"
       - "build/meson-logs/*.txt"
+  # Currently broken, https://gitlab.freedesktop.org/dbus/dbus/-/issues/462
+  when: manual
 
 windows-meson-vs15-x86:
   extends: .win-build
