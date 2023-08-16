@@ -38,6 +38,10 @@
 #include <inttypes.h>
 #endif
 
+#ifdef HAVE_STDATOMIC_H
+#include <stdatomic.h>
+#endif
+
 #include <dbus/dbus-errors.h>
 #include <dbus/dbus-file.h>
 #include <dbus/dbus-string.h>
@@ -311,6 +315,18 @@ dbus_bool_t _dbus_daemon_unpublish_session_bus_address (void);
 
 dbus_bool_t _dbus_socket_can_pass_unix_fd(DBusSocket fd);
 
+/* PID FDs are Linux-specific. */
+#ifdef DBUS_WIN
+static inline dbus_pid_t _dbus_resolve_pid_fd (int pid_fd)
+{
+  return DBUS_PID_UNSET;
+}
+
+#else
+DBUS_PRIVATE_EXPORT
+dbus_pid_t _dbus_resolve_pid_fd (int pid_fd);
+#endif
+
 /** Opaque type representing an atomically-modifiable integer
  * that can be used from multiple threads.
  */
@@ -321,7 +337,9 @@ typedef struct DBusAtomic DBusAtomic;
  */
 struct DBusAtomic
 {
-#ifdef DBUS_WIN
+#ifdef HAVE_STDATOMIC_H
+  atomic_int value; /**< Value of the atomic integer. */
+#elif defined(DBUS_WIN)
   volatile long value; /**< Value of the atomic integer. */
 #else
   volatile dbus_int32_t value; /**< Value of the atomic integer. */

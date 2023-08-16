@@ -1,4 +1,5 @@
 # Copyright © 2019-2020 Salamandar <felix@piedallu.me>
+# SPDX-License-Identifier: MIT
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -61,6 +62,9 @@ config.set_quoted('DBUS_DAEMON_NAME', 'dbus-daemon')
 ###############################################################################
 # libtool versioning - this applies to libdbus
 # http://sources.redhat.com/autobook/autobook/autobook_91.html#SEC91
+#
+# These variables are parsed automatically by cmake/modules/MacrosMeson.cmake,
+# be careful if changing the formatting
 
 ## increment if the interface has additions, changes, removals.
 lt_current = 40
@@ -89,7 +93,7 @@ platform_windows = host_os.contains('windows')
 if platform_windows
     # On Windows, we use C++ constructors to initialize global locks
     using_cpp = true
-    add_languages('cpp', required: true)
+    add_languages('cpp', required: true, native: false)
     cpp = meson.get_compiler('cpp')
 else
     using_cpp = false
@@ -624,7 +628,18 @@ endif
 config.set('DBUS_BUILD_X11', use_x11_autolaunch)
 config.set('DBUS_ENABLE_X11_AUTOLAUNCH', use_x11_autolaunch)
 
+# Opt-in to large timestamp support, which we know doesn't break libdbus ABI:
+# https://gitlab.freedesktop.org/dbus/dbus/-/issues/465
+# Meson does the equivalent for large offsets and inode numbers automatically.
+if (
+    cc.has_header_symbol('time.h', '__GLIBC__', args: compile_args_c)
+    and not cc.has_header_symbol('time.h', '_TIME_BITS', args: compile_args_c)
+    and cc.sizeof('void *') == 4
+)
+    config.set('_TIME_BITS', '64')
+endif
 
+# keep CMakeLists.txt in sync
 check_functions = [
     'accept4',
     'clearenv',
@@ -661,6 +676,7 @@ foreach function : check_functions
     config.set(macro, cc.has_function(function, args: compile_args_c) ? 1 : false)
 endforeach
 
+# keep CMakeLists.txt in sync
 check_headers = [
     'afunix.h',
     'alloca.h',
@@ -675,6 +691,7 @@ check_headers = [
     'linux/magic.h',
     'locale.h',
     'signal.h',
+    'stdatomic.h',
     'syslog.h',
     'sys/prctl.h',
     'sys/random.h',
@@ -765,6 +782,14 @@ config.set('HAVE_FSTATFS',
     )
 )
 
+config.set10('HAVE_DECL_SYS_PIDFD_OPEN',
+    cc.has_header_symbol(
+        'sys/syscall.h',
+        'SYS_pidfd_open',
+        args: compile_args_c,
+    )
+)
+
 ###############################################################################
 # Project options
 
@@ -803,6 +828,7 @@ config.set('DBUS_DISABLE_CHECKS', not checks ? 1 : false)
 config.set('G_DISABLE_CHECKS', not checks ? 1 : false)
 config.set('HAVE_GIO_UNIX', have_gio_unix ? 1 : false)
 # Ignore post-2.38 deprecations, prevent use of post-2.44 APIs.
+# keep in sync with CMakeLists.txt
 config.set('GLIB_VERSION_MIN_REQUIRED', 'GLIB_VERSION_2_38')
 config.set('GLIB_VERSION_MAX_ALLOWED', 'G_ENCODE_VERSION(2,44)')
 

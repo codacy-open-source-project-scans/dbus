@@ -419,6 +419,7 @@ errno.h
 linux/close_range.h
 locale.h
 signal.h
+stdatomic.h
 sys/prctl.h
 sys/random.h
 sys/resource.h
@@ -545,6 +546,31 @@ else
 fi
 
 AC_SUBST(DBUS_INT16_TYPE)
+
+# Opt-in to large timestamp support, which we know doesn't break libdbus ABI:
+# https://gitlab.freedesktop.org/dbus/dbus/-/issues/465
+# Currently we only know how to do this for GNU libc.
+AC_CHECK_DECL(
+    [__GLIBC__], [
+        AC_CHECK_DECL(
+            [_TIME_BITS],
+            [time_bits_defined=yes],
+            [time_bits_defined=no],
+            [[#include <time.h>]]
+        )
+    ],
+    [],
+    [[#include <time.h>]]
+)
+AS_IF(
+    [test "$time_bits_defined" = no && test "$DBUS_SIZEOF_VOID_P" = 4],
+    [
+        AC_DEFINE(
+            [_TIME_BITS], [64],
+            [Define to 64 if using 32-bit glibc and not already defined]
+        )
+    ]
+)
 
 ## byte order
 case $host_os in
@@ -1028,6 +1054,8 @@ fi
 
 AC_CHECK_HEADERS(sys/vfs.h, [AC_CHECK_FUNCS(fstatfs)])
 AC_CHECK_HEADERS([linux/magic.h])
+
+AC_CHECK_DECLS([SYS_pidfd_open], [], [], [[ #include <sys/syscall.h> ]])
 
 #### Set up final flags
 LIBDBUS_LIBS="$THREAD_LIBS $NETWORK_libs $SYSTEMD_LIBS"
