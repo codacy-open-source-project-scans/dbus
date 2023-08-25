@@ -107,7 +107,7 @@ typedef struct
   BusSELinuxID *selinux_id;
   BusAppArmorConfinement *apparmor_confinement;
 
-  long connection_tv_sec;  /**< Time when we connected (seconds component) */
+  dbus_int64_t connection_tv_sec;  /**< Time when we connected (seconds component) */
   long connection_tv_usec; /**< Time when we connected (microsec component) */
   int stamp;               /**< connections->stamp last time we were traversed */
   BusExtraHeaders want_headers;
@@ -967,7 +967,8 @@ bus_connections_expire_incomplete (BusConnections *connections)
   
   if (connections->incomplete != NULL)
     {
-      long tv_sec, tv_usec;
+      dbus_int64_t tv_sec;
+      long tv_usec;
       DBusList *link;
       int auth_timeout;
       
@@ -1081,7 +1082,7 @@ bus_connection_get_unix_groups  (DBusConnection   *connection,
 
   if (dbus_connection_get_unix_user (connection, &uid))
     {
-      if (!_dbus_unix_groups_from_uid (uid, groups, n_groups))
+      if (!_dbus_unix_groups_from_uid (uid, groups, n_groups, error))
         {
           _dbus_verbose ("Did not get any groups for UID %lu\n",
                          uid);
@@ -1586,6 +1587,7 @@ bus_connection_complete (DBusConnection   *connection,
 
   d->policy = bus_context_create_client_policy (d->connections->context,
                                                 connection,
+                                                NULL,
                                                 error);
 
   /* we may have a NULL policy on OOM or error getting list of
@@ -1662,22 +1664,27 @@ bus_connections_reload_policy (BusConnections *connections,
        link;
        link = _dbus_list_get_next_link (&(connections->completed), link))
     {
+      BusClientPolicy *policy;
+
       connection = link->data;
       d = BUS_CONNECTION_DATA (connection);
       _dbus_assert (d != NULL);
       _dbus_assert (d->policy != NULL);
 
-      bus_client_policy_unref (d->policy);
-      d->policy = bus_context_create_client_policy (connections->context,
-                                                    connection,
-                                                    error);
-      if (d->policy == NULL)
+      policy = bus_context_create_client_policy (connections->context,
+                                                 connection,
+                                                 d->policy,
+                                                 error);
+      if (policy == NULL)
         {
           _dbus_verbose ("Failed to create security policy for connection %p\n",
                       connection);
           _DBUS_ASSERT_ERROR_IS_SET (error);
           return FALSE;
         }
+
+      bus_client_policy_unref (d->policy);
+      d->policy = policy;
     }
 
   return TRUE;
